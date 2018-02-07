@@ -249,9 +249,13 @@ control_table <- dat %>%
 full_table <- bind_cols(control_table, treat_table) %>%
   mutate(mean_dif = treat_mean_tv - cont_mean_tv)
 
-ate <- mean(full_table$mean_dif)
-se <- sd(full_table$mean_dif) / 3
+ate <- weighted.mean(full_table$mean_dif, w = p_s)
+se <- sd(full_table$mean_dif * p_s) / 3
+
+ci <- c(ate - 1.96 * se, ate + 1.96 * se)
 ```
+
+TODO(jcm): talk about conclusions
 
 #### 10. Using the estimate of the propensity score, (1) create weights for `ATDDMY=1` and those for `ATDDMY=0` by the IPT formula for the ATE.
 
@@ -309,8 +313,9 @@ dat <- dat %>%
 
 display_cor <- cor(dat$lgt_p, dat$actual_adj_weight)
 names(display_cor) <- "Correlation between logit of propensity and the IPT weights"
-kable(display_cor)
+(display_cor)
 ```
+Looks close to 0 to me.
 
 #### 14. Test the statistical independence between each of the four covariates and `ATDDMY` with the IPT-weighted data
 
@@ -323,17 +328,56 @@ covs0 <- subset(dat, select = c(educ5, race_d, age10c, wd))
 # methodologists claim that p-values are misleading for covariate balance, and
 # hence they are omitted.
 (results <- bal.tab(covs0, treat = dat$atddmy, weights = dat$actual_adj_weight,
-                   method = "weighting", estimand = "ATE", int = T))
+                   method = "weighting", estimand = "ATE"))
 ```
+
+This looks good (not statistically dependent), the R library we're using says that "leading methodologists" discourage hypothesis tests, and so it completely omits p-values in favor of summary statistics.
+
 
 #### 15. Conduct the T-test for the difference in the weighted mean of `TVHOURS` between the two states of the treatment variable (`ATDDMY`), give estimate for the treatment effect, its standard error, and conclude. Assume a distinct variance of `Y` for each state of the treatment variable.
 
+```{r 15}
+(t_test_result <- t.test(adj_weight_tv_hours ~ atddmy, data = dat))
+
+print("Estimate for treatment effect:")
+(dif <- as.numeric(t_test_result$estimate[1] - t_test_result$estimate[2]))
+print("SE:")
+(se <- as.numeric((t_test_result$conf.int[1] - dif) / -1.96))
+
+print("CI:")
+as.numeric(t_test_result$conf.int)
+```
+
+We conclude that `ATDDMY` significantly affects the hours of watching TV.
+
 #### 16. Apply the following two linear regression models using `TVHOURS` as the dependent variables. (1) regression model with `ATDDMY` as the only explanator variable wit the IPT weights, and (2) regression model with `ATDDMY` and the control variables (use dummy variables for the education and age variables) as the explanatory variables with the IPT weights.
+
+```{r 16}
+lm1 <- lm(adj_weight_tv_hours ~ atddmy, data = dat)
+lm2 <- lm(adj_weight_tv_hours ~ atddmy + educ5 + race_d + age10c + wd, data = dat,
+          weights = dat$actual_adj_weight)
+
+(lm1s <- summary(lm1))
+```
 
 #### 17. For the results from 16, answer the following.
 
-  (a) Confirm that the treatment effect in the model of (1) is the same as the one we obtained in (15), but the standard error slightly differs. Why does it differ?
-  (b) What is the purpose of applying model (2)? Why should we expect an estimate of the treatment effect that is very close to the result of model (1)?
+#####  (a) Confirm that the treatment effect in the model of (1) is the same as the one we obtained in (15), but the standard error slightly differs. Why does it differ?
+
+The estimate of the treatment effect from (15) is `r dif` and the treatment effect for the model of (1) is `r lm1s$coefficients[2, 1]`.
+
+The standard error from (15) is `r se`, and the standard error from (1) is `r lm1s$coefficients[2,2]`.
+
+THe standard errors are different because the t.test has fewer degress of freedom than the linear regression.
+
+#####   (b) What is the purpose of applying model (2)? Why should we expect an estimate of the treatment effect that is very close to the result of model (1)?
+
+```{r 17b}
+(lm2s <- summary(lm2))
+```
+
+We apply model (2) to ensure that our IPTW procedure to adjust for the effect of certain covariates on our treatment variable (`ATDDMY`) was successful. We can see that IPTW worked well because the coefficients for `ATDDMY` are quite close between models (1) and (2).
+
 
 ```{r extra, include=F, eval=F}
 
