@@ -1,7 +1,7 @@
 ---
 title: "Intro to Causal Inference HW1"
 author: "Julian McClellan"
-date: "February 1, 2018"
+date: "February 13, 2018"
 output: pdf_document
 ---
 
@@ -201,7 +201,8 @@ print("~95% confidence bound for (2)")
 kable(ci)
 ```
 
-
+Looking at each strata p-values (1) and the CI (2) we can confirm that no significant differences in the logit exist.
+ 
 #### 7. Test the conditional independence between `ATDDMY` and each of the four variables (`EDUC5`, `RACE_D`, `AGE10C`, and `WD`) controlling for strata.
 
 ```{r 7, message=F}
@@ -217,6 +218,8 @@ ci_results <- ci_vars %>%
 names(ci_results) <- paste("atddmy ~", ci_vars)
 kable(ci_results)
 ```
+
+P-values seem to reassure us that there is conditional independence.
 
 
 #### 8. Calculate the mean of the outcome variable (`TVHOURS`) for each stratum.
@@ -249,13 +252,15 @@ control_table <- dat %>%
 full_table <- bind_cols(control_table, treat_table) %>%
   mutate(mean_dif = treat_mean_tv - cont_mean_tv)
 
-ate <- weighted.mean(full_table$mean_dif, w = p_s)
-se <- sd(full_table$mean_dif * p_s) / 3
-
-ci <- c(ate - 1.96 * se, ate + 1.96 * se)
+print("ATE:")
+(ate <- weighted.mean(full_table$mean_dif, w = p_s))
+print("SE:")
+(se <- sd(full_table$mean_dif * p_s) / 3)
+print("CI:")
+(ci <- c(ate - 1.96 * se, ate + 1.96 * se))
 ```
 
-TODO(jcm): talk about conclusions
+Looking at the confidence interval we can conclude that church attendance does significantly affect the hours of watching TV (lowers them).
 
 #### 10. Using the estimate of the propensity score, (1) create weights for `ATDDMY=1` and those for `ATDDMY=0` by the IPT formula for the ATE.
 
@@ -285,6 +290,9 @@ display_table <- weight_check[,c(1,2)] %>%
 
 kable(display_table)
 ```
+
+These things are close, and thus the "convergence" test is passed and we can be assured that:
+$ATE=\widehat{E}(Y_1) - \widehat{E}(Y_0)$.
 
 #### 12. Adjust the IPT weights to have the average weight to be `1.0` for each state of the treatment variable.
 
@@ -345,7 +353,7 @@ print("SE:")
 (se <- as.numeric((t_test_result$conf.int[1] - dif) / -1.96))
 
 print("CI:")
-as.numeric(t_test_result$conf.int)
+(as.numeric(t_test_result$conf.int))
 ```
 
 We conclude that `ATDDMY` significantly affects the hours of watching TV.
@@ -368,7 +376,7 @@ The estimate of the treatment effect from (15) is `r dif` and the treatment effe
 
 The standard error from (15) is `r se`, and the standard error from (1) is `r lm1s$coefficients[2,2]`.
 
-THe standard errors are different because the t.test has fewer degress of freedom than the linear regression.
+The standard errors are different because the t.test has fewer degress of freedom than the linear regression this is because in 15 we assume a distinct variance of `Y` for each of the 2 states of the treatment variable `ATDDMY`, thus there is less confidence in our estimate, so the standard error is higher.
 
 #####   (b) What is the purpose of applying model (2)? Why should we expect an estimate of the treatment effect that is very close to the result of model (1)?
 
