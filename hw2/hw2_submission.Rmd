@@ -83,6 +83,14 @@ reg_slice <- dat %>%
 #### (1) The exogeneity of Z
 
 ```{r exo_endo_test}
+library(AER)
+# Will be used later
+filtered_dat <- dat %>%
+                # We keep only those who complied with the random assignment
+                # (Z = 0 & D = 0) | (Z = 1 & D = 1)
+                filter(
+                  (Z == 1 & D == 1) | (Z == 0 & D == 0)
+                )
 iv2 <-  ivreg(Y ~ D
                 | Z, data = dat)
 
@@ -117,4 +125,37 @@ alpha_1 <- lm(D ~ Z, data=dat)
 veta_1 <- lm(Y ~ Z, data=dat)
 ```
 
-####
+### I.4
+
+
+#### Regression Models
+
+$$Y = \beta_0 + \beta_1D + \epsilon$$
+
+However, `D` is correlated with $\epsilon$, so $E[\hat{\beta_1}]\neq \beta_1$. (I.e. $\hat{\beta_1}$ is a biased estimator of $\beta_1$)
+
+Thus we utilize 2SLS. Stage 1:
+
+$$D = \gamma_0 + \gamma_1Z + u$$
+$$\hat{D} = \hat{\gamma_0} + \hat{\gamma_1}Z + u$$
+
+Because we assume that `Z` is independent of $\epsilon$, thus $\hat{D}$ is independent of $epsilon$ as well. Now we move on to Stage 2:
+
+$$D = \beta_0 + \beta_1\hat{D} + \epsilon$$
+
+Now $\hat{\beta_1}$ is an unbiased estimate of $\beta_1$
+
+
+#### According to your analytic results, what is the average effect of class size reduction on the reading achievement of students who complied with the random assignment for two consecutive years? Is the effect significant.
+
+```{r 2sls}
+iv2_2 <-  ivreg(Y ~ D
+                | Z, data = dat)
+(summary(iv2_2))
+```
+The estimated coefficient for `D` is `r coef(iv2)[2]`, and we see that it is significant at the 5% level.
+
+
+### I.5
+
+#### Could you give a reason why the result from I.4 might be different from the PF estimate obtained ealier when you simply regress `Y` on `D`? Confirm also that the ratio of the estimate of $\gamma_1$ to the estimate of $\alpha_1$ in I.3 is the same (except for a very minor difference) as the 2SLS estimate.
