@@ -6,14 +6,14 @@ output: pdf_document
 ---
 
 ```{r data_read_transform, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo=FALSE, warning=F, messsage=F)
 library(tidyverse)
 library(haven)
 theme_set(theme_minimal())
 dat <- read_dta("WEBSTER.dta")
 ```
 
-### I.1
+### 1.1
 
 #### Do you observe any evidence of non-compliance among first graders?
 
@@ -78,19 +78,12 @@ reg_slice <- dat %>%
   ) 
 ```
 
-### I.2
+### 1.2
 
 #### (1) The exogeneity of Z
 
 ```{r exo_endo_test}
-library(AER)
-# Will be used later
-filtered_dat <- dat %>%
-                # We keep only those who complied with the random assignment
-                # (Z = 0 & D = 0) | (Z = 1 & D = 1)
-                filter(
-                  (Z == 1 & D == 1) | (Z == 0 & D == 0)
-                )
+library(AER, warn.conflicts=T)
 iv2 <-  ivreg(Y ~ D
                 | Z, data = dat)
 
@@ -99,15 +92,24 @@ iv2 <-  ivreg(Y ~ D
 The exogeneity of `Z` seems plausible since we fail to reject (at 95%
 confidence) with the Wu-Hausman test.
  
- 
 #### (2) Exclusion Assumption
+
+In this case it does not seem plausible for the exclusion assumption to hold. In our case, the exclusion assumption would say that regardless of whether or not a student was in a smaller class size for kindergarten, their reading score would be the same if they were in a smaller 1st grade class. (It also says that regardless of kindergarten class size, the score for the student would be the same if they were not in a smaller 1st grade class.) Given that our outcome of interest, `Y` is a reading score, and given how the skill of reading builds upon prior years of reading, it actually seems like class size in kindergarten would indeed affect reading score outcomes for a given 1st grade class size.
 
 #### (3) Monotonicity assumption
 
+Are there "defiers" in the population? We've seen that from the answers to our questions above that defiers constitute under 10% of all observations in the data. It is definitely not plausible to assume that no defiers exists, indeed, a "large" kindergarten class may become a "small" 1st grade class when students leave over the course of a year, and a "small" kindergarten class may become a "large" 1st grade class with an influx of new students. Because the size of the classes (as far as I know, there is no variable legend) isn't recorded for each observations, its possible that some of the observed defiers are classes near the threshold of a small class that were pushed over/under that threshold by the time the student entered the 1st grade.
+
+Thus, the monotonicity assumption can't be said to hold, at least strictly.
+
 #### (4) Correlated effects
 
+NOTE(jcm): https://www.sciencedirect.com/science/article/pii/030440769390040C says that correlated effects are: regarded as misspecification biases due to the exclusion of relevant variables in a standard regression model.
 
-### I.3
+Because our model only includes regressing `Y` on `D`, with `Z`, correlated effects would likely lead to some misspecification biases in our model. 
+
+
+### 1.3
 
 ```{r}
 lmi3 <- lm(Y ~ D, data=dat)
@@ -122,17 +124,23 @@ Looking at the above summary table for our regression of `Y` on `D` the average 
 
 ```{r itt_effect}
 alpha_1 <- lm(D ~ Z, data=dat)
-veta_1 <- lm(Y ~ Z, data=dat)
+gamma_1 <- lm(Y ~ Z, data=dat)
+
+av_ratio <- coef(gamma_1)[2] / coef(alpha_1)[2]
 ```
 
-### I.4
+#### Compute the ratio of the estimate of $\gamma_1$ to the estimate of $\alpha_1$
+
+This ratio is: `r av_ratio`
+
+### 1.4
 
 
 #### Regression Models
 
 $$Y = \beta_0 + \beta_1D + \epsilon$$
 
-However, `D` is correlated with $\epsilon$, so $E[\hat{\beta_1}]\neq \beta_1$. (I.e. $\hat{\beta_1}$ is a biased estimator of $\beta_1$)
+However, `D` is correlated with $\epsilon$, because there are unobserved covariates that effect both `Y` and `D`. so $E[\hat{\beta_1}]\neq \beta_1$. (I.e. $\hat{\beta_1}$ is a biased estimator of $\beta_1$)
 
 Thus we utilize 2SLS. Stage 1:
 
@@ -141,21 +149,119 @@ $$\hat{D} = \hat{\gamma_0} + \hat{\gamma_1}Z + u$$
 
 Because we assume that `Z` is independent of $\epsilon$, thus $\hat{D}$ is independent of $epsilon$ as well. Now we move on to Stage 2:
 
-$$D = \beta_0 + \beta_1\hat{D} + \epsilon$$
+$$Y = \beta_0 + \beta_1\hat{D} + \epsilon$$
 
 Now $\hat{\beta_1}$ is an unbiased estimate of $\beta_1$
 
 
-#### According to your analytic results, what is the average effect of class size reduction on the reading achievement of students who complied with the random assignment for two consecutive years? Is the effect significant.
+#### According to your analytic results, what is the average effect of class size reduction on the reading achievement of students who complied with the random assignment for two consecutive years? Is the effect significant?
 
 ```{r 2sls}
-iv2_2 <-  ivreg(Y ~ D
-                | Z, data = dat)
+iv2_2 <-  ivreg(Y ~ D | Z, data = dat)
 (summary(iv2_2))
 ```
 The estimated coefficient for `D` is `r coef(iv2)[2]`, and we see that it is significant at the 5% level.
 
 
-### I.5
+### 1.5
 
-#### Could you give a reason why the result from I.4 might be different from the PF estimate obtained ealier when you simply regress `Y` on `D`? Confirm also that the ratio of the estimate of $\gamma_1$ to the estimate of $\alpha_1$ in I.3 is the same (except for a very minor difference) as the 2SLS estimate.
+#### Could you give a reason why the result from I.4 might be different from the PF estimate obtained ealier when you simply regress `Y` on `D`? 
+
+The reason is probably because there are unmeasured confounding variables that effect both `Y` and `D`, (the estimator for the effect of `D` on `Y` is biased) which makes sense given the relative sparisty of our regression equation. This is what leads us to utilize instrumental variables regression in the first place.
+
+#### Confirm also that the ratio of the estimate of $\gamma_1$ to the estimate of $\alpha_1$ in I.3 is the same (except for a very minor difference) as the 2SLS estimate.
+
+Yes, the ratio (`r av_ratio`) is the same as the 2SLS estimate `r coef(iv2_2)[2]`
+
+### 1.6 Obtain the 2SLS estimate of the effect of `D` on `Y` for African Americans (`RD=1`) and others (`RD=0`) separately.
+
+```{r iv_rd}
+black_dat <- dat %>%
+  filter(RD == 1)
+
+other_dat <- dat %>%
+  filter(RD == 0)
+
+ivreg_black <- ivreg(Y ~ D | Z, data = black_dat)
+ivreg_other <- ivreg(Y ~ D | Z, data = other_dat)
+```
+
+#### Using the 10% significance level, what do you conclude regarding the class-size effect for each racial group?
+
+
+First let's look at the summary of the regression for blacks (`RD=1`):
+
+```{r}
+(summary(ivreg_black))
+```
+
+and now for others (`RD=0`):
+
+```{r}
+(summary(ivreg_other))
+```
+
+At the 10% signifiance level, the class-size effect for blacks is significant, while for others it is not.
+
+### 1.7 Express $\alpha$ and $\beta$ using some of the quantities listed:
+
+$$\alpha = E(Y(0) | A)$$
+$$\beta = E(Y(1) | A) - E(Y(0) | A)$$
+
+
+```{r work_backwards}
+dat_dis1 <- dat %>%
+  filter(D == 1)
+
+lreg <- lm(Y ~ Z, data = dat_dis1)
+
+alpha <- coef(lreg)[1]
+beta <- coef(lreg)[2]
+
+always_takers <- dat %>% filter(D == 1)
+compliers <- dat %>%
+          filter((D == 0 & Z == 0) | (D == 1 & Z == 1))
+never_takers <- dat %>% filter(D == 0)
+  
+
+# beta = e_y1_ga - e_y0_ga
+# alpha = e_y0_ga 
+
+# Calculate the following quantities
+# E(Y(0) | A) = E(Y(Z = 0) | A)
+e_y0_ga <- mean(pull(always_takers %>% filter(Z == 0), Y))
+
+# E(Y(1) | A) = E(Y(Z = 1) | A)
+e_y1_ga <- mean(pull(always_takers %>% filter(Z == 1), Y))
+
+# E(Y(0) | C) = E(Y(Z = 0) | C)
+e_y0_gc <- mean(pull(compliers %>% filter(Z == 0), Y))
+
+# E(Y(1) | C) = E(Y(Z = 1) | C)
+e_y1_gc <- mean(pull(compliers %>% filter(Z == 1), Y))
+
+# E(Y(0) | N) = E(Y(Z = 0) | N)
+e_y0_gn <- mean(pull(never_takers %>% filter(Z == 0), Y))
+
+# E(Y(1) | N) = E(Y(Z = 1) | N)
+e_y1_gn <- mean(pull(never_takers %>% filter(Z == 1), Y))
+
+# P(L_A)
+pla <- nrow(always_takers) / nrow(dat)
+
+# P(L_C)
+plc <- nrow(compliers) / nrow(dat)
+
+# P(L_N)
+pln <- nrow(never_takers) / nrow(dat)
+```
+
+### I.8
+
+#### Explain why the effect of `Z` can be significant even if the exclusion assumption holds.
+
+Random chance.
+
+### Give the estimate of the effect of `Z` in the equation of 1.7. What does the result of this analysis inform about the characteristics of selection bias?
+
+The estimate is `r beta`.
