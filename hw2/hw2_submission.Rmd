@@ -90,7 +90,7 @@ iv2 <-  ivreg(Y ~ D
 (summary(iv2, vcov = sandwich, diagnostics = T))
 ```
 The exogeneity of `Z` seems plausible since we fail to reject (at 95%
-confidence) with the Wu-Hausman test.
+confidence) with the Wu-Hausman test. However, in thinking about the context of the problem, any reason for the endogeneity of `D` may also cause `Z` to be endogenous as well, since they are both measuring class size, but jsut one year apart.
  
 #### (2) Exclusion Assumption
 
@@ -260,7 +260,7 @@ pln <- nrow(never_takers) / nrow(dat)
 
 #### Explain why the effect of `Z` can be significant even if the exclusion assumption holds.
 
-Random chance.
+Random chance. Also, while the exclusion assumption might hold, the assumption that `Z` is completely random isn't true for the data.
 
 ### Give the estimate of the effect of `Z` in the equation of 1.7. What does the result of this analysis inform about the characteristics of selection bias?
 
