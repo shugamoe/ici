@@ -82,20 +82,7 @@ reg_slice <- dat %>%
 
 #### (1) The exogeneity of Z
 
-```{r exo_endo_test}
-library(AER, warn.conflicts=T)
-iv2 <-  ivreg(Y ~ D
-                | Z, data = dat)
-
-(summary(iv2, vcov = sandwich, diagnostics = T))
-```
-NOTE:  Prof said this test is not really relevant here.  Wu-Hausman tests the similarty of coefficients between models, instead we can just discuss what we think to be true.  Also FWIW we do basically ignore every variable other than Y/Z/D etc
-
-We are told that students are assigned to either small clases at random so we can assume Z is exogenious.  Comparing some of the demographic varibles using a t-test shows there is no significant different between the two groups among these variables.
-
-TODO: run t-test between groups Z=0/1.
-The exogeneity of `Z` seems plausible since we fail to reject (at 95%
-confidence) with the Wu-Hausman test. However, in thinking about the context of the problem, any reason for the endogeneity of `D` may also cause `Z` to be endogenous as well, since they are both measuring class size, but jsut one year apart.
+In thinking about the context of the problem, any reason for the endogeneity of `D` may also cause `Z` to be endogenous as well, since they are both measuring class size, but just one year apart.
  
 #### (2) Exclusion Assumption
 
@@ -264,10 +251,8 @@ pln <- nrow(never_takers) / nrow(dat)
 ### I.8
 
 #### Explain why the effect of `Z` can be significant even if the exclusion assumption holds.
-TODO
-The effect on Z can be significant because it is possible that uncorelated variables become correlated when D is fixed = 1.  In other words there might be unobserved factors which caused D=1.  For example, maybe the the non-compliers have parents that requested a certain teacher or class size.  **something about colliding variables I need to read up on**
-Random chance. Also, while the exclusion assumption might hold, the assumption that `Z` is completely random isn't true for the data.
+The effect on `Z` can be significant because it is possible that uncorelated variables become correlated when `D` is fixed `= 1`.  In other words there might be unobserved factors which caused `D=1`.  For example, maybe the the non-compliers have parents that requested a certain teacher or class size. Random chance. Also, while the exclusion assumption might hold, the assumption that `Z` is completely random isn't true for the data. `D` might also be a colliding variable, so conditioning on a certain value of it may cause confounding such that `Z` becomes significant.
 
 ### Give the estimate of the effect of `Z` in the equation of 1.7. What does the result of this analysis inform about the characteristics of selection bias?
 
-The estimate is `r beta`.
+The estimate is `r beta`, however it is not significant. This shows us that non-compliance with the treatment is not significant, and that `Z` is a usable instrument to address the selection bias in this problem.
